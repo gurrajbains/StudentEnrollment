@@ -1,0 +1,78 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+    <h1>Admin Dashboard</h1>
+</header>
+
+<main class="dashboard-main">
+    <h2>Manage Database</h2>
+
+    <select id="table">
+        <option value="users">Users</option>
+        <option value="courses">Courses</option>
+        <option value="enrollments">Enrollments</option>
+    </select>
+
+    <input id="record-id" placeholder="Record ID">
+    <textarea id="data" placeholder="Record JSON"></textarea>
+
+    <div>
+        <button onclick="send('GET')">View</button>
+        <button onclick="send('POST')">Create</button>
+        <button onclick="send('PUT')">Update</button>
+        <button onclick="send('DELETE')">Delete</button>
+    </div>
+
+    <h2>Results</h2>
+    <pre id="result"></pre>
+</main>
+
+<script>
+    async function send(method) {
+        const table = document.getElementById("table").value;
+        const id = document.getElementById("record-id").value;
+        const data = document.getElementById("data").value;
+        const result = document.getElementById("result");
+
+        if ((method === "PUT" || method === "DELETE") && !id) {
+            result.textContent = "Enter a record ID.";
+            return;
+        }
+
+        let url = "/api/admin/" + table;
+        if (method === "PUT" || method === "DELETE") {
+            url += "/" + encodeURIComponent(id);
+        }
+
+        const options = {method};
+
+        if (method === "POST" || method === "PUT") {
+            try {
+                options.headers = {"Content-Type": "application/json"};
+                options.body = JSON.stringify(JSON.parse(data));
+            } catch {
+                result.textContent = "Enter valid JSON.";
+                return;
+            }
+        }
+
+        try {
+            const response = await fetch(url, options);
+            result.textContent = response.status + "\n" +
+                await response.text();
+        } catch (error) {
+            result.textContent = error.message;
+        }
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,173 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header>
+    <h1>Student Dashboard</h1>
+</header>
+
+<main class="dashboard-main">
+
+    <a href="index.html">Back to Login</a>
+
+    <h2>My Courses</h2>
+    <button onclick="loadCourses()">Refresh Courses</button>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Course</th>
+                <th>Teacher</th>
+                <th>Time</th>
+                <th>Students</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="my-courses"></tbody>
+    </table>
+
+    <h2>Available Courses</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Course</th>
+                <th>Teacher</th>
+                <th>Time</th>
+                <th>Students</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="available-courses"></tbody>
+    </table>
+
+    <p id="status">Waiting for backend connection.</p>
+
+</main>
+
+<script>
+    const myCourses = document.getElementById("my-courses");
+    const availableCourses = document.getElementById("available-courses");
+    const statusText = document.getElementById("status");
+
+    async function api(url, options = {}) {
+        const response = await fetch(url, options);
+
+        if (!response.ok) {
+            throw new Error("HTTP " + response.status);
+        }
+
+        return response.json();
+    }
+
+    function showCourses(courses, table, action) {
+        table.innerHTML = "";
+
+        if (courses.length === 0) {
+            const row = table.insertRow();
+            const cell = row.insertCell();
+            cell.colSpan = 5;
+            cell.textContent = "No courses found.";
+            return;
+        }
+
+        for (const course of courses) {
+            const row = table.insertRow();
+
+            row.insertCell().textContent = course.name;
+            row.insertCell().textContent = course.teacher;
+            row.insertCell().textContent = course.time;
+
+            row.insertCell().textContent =
+                course.enrolled_count + "/" + course.capacity;
+
+            const actionCell = row.insertCell();
+            const button = document.createElement("button");
+
+            button.textContent =
+                action === "drop" ? "Drop" : "Enroll";
+
+            if (action === "enroll" &&
+                course.enrolled_count >= course.capacity) {
+                button.disabled = true;
+                button.textContent = "Full";
+            }
+
+            button.onclick = function() {
+                if (action === "drop") {
+                    dropCourse(course.id);
+                } else {
+                    enrollCourse(course.id);
+                }
+            };
+
+            actionCell.appendChild(button);
+        }
+    }
+
+    async function loadCourses() {
+        try {
+            const enrolled = await api("/api/student/courses");
+            const available = await api("/api/courses");
+
+            showCourses(enrolled, myCourses, "drop");
+            showCourses(available, availableCourses, "enroll");
+
+            statusText.textContent = "Courses loaded.";
+        } catch (error) {
+            statusText.textContent =
+                "Unable to load courses: " + error.message;
+        }
+    }
+
+    async function enrollCourse(courseId) {
+        try {
+            await api("/api/student/courses", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    course_id: courseId
+                })
+            });
+
+            await loadCourses();
+            statusText.textContent = "Enrollment successful.";
+        } catch (error) {
+            statusText.textContent =
+                "Enrollment failed: " + error.message;
+        }
+    }
+
+    async function dropCourse(courseId) {
+        try {
+            await api(
+                "/api/student/courses/" +
+                encodeURIComponent(courseId),
+                {
+                    method: "DELETE"
+                }
+            );
+
+            await loadCourses();
+            statusText.textContent = "Course dropped.";
+        } catch (error) {
+            statusText.textContent =
+                "Unable to drop course: " + error.message;
+        }
+    }
+
+    loadCourses();
+</script>
+
+</body>
+</html>

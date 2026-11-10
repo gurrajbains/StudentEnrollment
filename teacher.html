@@ -1,0 +1,79 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Teacher Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+    <h1>Teacher Dashboard</h1>
+</header>
+
+<main class="dashboard-main">
+    <h2>My/Your Classes</h2>
+    <button onclick="getData('/api/teacher/courses')">
+        View Classes
+    </button>
+
+    <h2>Student Grades</h2>
+    <input id="course" placeholder="Course ID">
+    <button onclick="getStudents()">View Students</button>
+
+    <h2>Update Grade</h2>
+    <input id="student" placeholder="Student ID">
+    <input id="grade" type="number" placeholder="Grade">
+    <button onclick="updateGrade()">Save Grade</button>
+
+    <h2>Results</h2>
+    <pre id="result"></pre>
+</main>
+
+<script>
+    const result = document.getElementById("result");
+
+    async function request(url, options) {
+        try {
+            const response = await fetch(url, options);
+            const text = await response.text();
+            result.textContent = response.status + "\n" + text;
+        } catch (error) {
+            result.textContent = error.message;
+        }
+    }
+
+    function getData(url) {
+        request(url);
+    }
+
+    function getStudents() {
+        const id = document.getElementById("course").value;
+        request("/api/teacher/courses/" + encodeURIComponent(id) + "/students");
+    }
+
+    function updateGrade() {
+        const course = document.getElementById("course").value;
+        const student = document.getElementById("student").value;
+        const grade = document.getElementById("grade").value;
+
+        if (!course || !student || grade === "") {
+            result.textContent = "Fill in all fields.";
+            return;
+        }
+
+        request(
+            "/api/teacher/courses/" + encodeURIComponent(course) +
+            "/students/" + encodeURIComponent(student) + "/grade",
+            {
+                method: "PATCH",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({grade: Number(grade)})
+            }
+        );
+    }
+</script>
+
+</body>
+</html>
