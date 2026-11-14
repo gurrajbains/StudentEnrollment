@@ -7,3 +7,10 @@ instance/
 *.sqlite
 *.sqlite3
 *.db
+.venv/
+__pycache__/
+instance/
+*.pyc
+*.sqlite
+*.db
+.env
