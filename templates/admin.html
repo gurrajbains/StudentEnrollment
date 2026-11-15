@@ -1,10 +1,11 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard</title>
     <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/dashboard.css">
 </head>
 <body>
 
@@ -13,75 +14,234 @@
 </header>
 
 <main class="dashboard-main">
-    <button type="button" onclick="logout()">Log Out</button>
-    <h2>Manage Database</h2>
-
-    <select id="table">
-        <option value="users">Users</option>
-        <option value="courses">Courses</option>
-        <option value="enrollments">Enrollments</option>
-    </select>
-
-    <input id="record-id" placeholder="Record ID">
-    <textarea id="data" placeholder="Record JSON"></textarea>
-
-    <div>
-        <button onclick="send('GET')">View</button>
-        <button onclick="send('POST')">Create</button>
-        <button onclick="send('PUT')">Update</button>
-        <button onclick="send('DELETE')">Delete</button>
+    <div class="topbar">
+        <h2 id="welcome">Welcome!</h2>
+        <button type="button" onclick="logout()">Log Out</button>
     </div>
 
-    <h2>Results</h2>
-    <pre id="result"></pre>
+    <div class="tabs">
+        <button type="button" class="tab active" id="tab-users" onclick="showTable('users')">Users</button>
+        <button type="button" class="tab" id="tab-courses" onclick="showTable('courses')">Courses</button>
+        <button type="button" class="tab" id="tab-enrollments" onclick="showTable('enrollments')">Enrollments</button>
+    </div>
+
+    <button type="button" onclick="openForm(null)">+ Add New</button>
+
+    <table>
+        <thead id="table-head"></thead>
+        <tbody id="table-body"></tbody>
+    </table>
+
+    <p id="status"></p>
+
+    <dialog id="form-dialog">
+        <form id="record-form">
+            <h2 id="form-title"></h2>
+            <div id="form-fields"></div>
+            <p id="form-error"></p>
+            <div class="dialog-buttons">
+                <button type="button" class="secondary" onclick="document.getElementById('form-dialog').close()">Cancel</button>
+                <button type="submit">Save</button>
+            </div>
+        </form>
+    </dialog>
 </main>
 
+<script src="/static/common.js"></script>
 <script>
-    function csrfToken() {
-        return document.cookie.split("; ").find(x => x.startsWith("csrf_access_token="))?.split("=")[1] || "";
-    }
-    async function logout() {
-        await fetch("/api/logout", {method: "POST", headers: {"X-CSRF-TOKEN": csrfToken()}});
-        window.location.href = "/";
+    // One description per table drives the whole page: which columns to show and which form fields to offer.
+    const SCHEMAS = {
+        users: {
+            singular: "User",
+            columns: [["id", "ID"], ["username", "Username"], ["name", "Name"], ["role", "Role"]],
+            fields: [
+                { key: "username", label: "Username" },
+                { key: "name", label: "Full name" },
+                { key: "role", label: "Role", type: "select", options: ["student", "teacher", "admin"] },
+                { key: "password", label: "Password", type: "password" }
+            ]
+        },
+        courses: {
+            singular: "Course",
+            columns: [["id", "ID"], ["name", "Course"], ["teacher", "Teacher"], ["time", "Time"],
+                      ["capacity", "Capacity"], ["enrolled_count", "Enrolled"]],
+            fields: [
+                { key: "name", label: "Course name" },
+                { key: "teacherID", label: "Teacher", type: "select", source: "teachers", numeric: true },
+                { key: "time", label: "Time (e.g. MWF 10:00-10:50 AM)" },
+                { key: "capacity", label: "Capacity", type: "number", min: 1, step: 1 }
+            ]
+        },
+        enrollments: {
+            singular: "Enrollment",
+            columns: [["id", "ID"], ["studentName", "Student"], ["courseName", "Course"], ["grade", "Grade"]],
+            fields: [
+                { key: "studentID", label: "Student", type: "select", source: "students", numeric: true },
+                { key: "courseID", label: "Course", type: "select", source: "courses", numeric: true },
+                { key: "grade", label: "Grade (optional)", type: "number", min: 0, max: 100, step: "any", optional: true }
+            ]
+        }
+    };
+
+    let current = "users";   // which table is showing
+    let editing = null;      // record being edited, or null when creating
+    let lookups = { users: [], courses: [] };
+
+    const statusText = document.getElementById("status");
+    const dialog = document.getElementById("form-dialog");
+
+    function setStatus(message, isError = false) {
+        statusText.textContent = message;
+        statusText.className = isError ? "error" : "";
     }
 
-    async function send(method) {
-        const table = document.getElementById("table").value;
-        const id = document.getElementById("record-id").value;
-        const data = document.getElementById("data").value;
-        const result = document.getElementById("result");
+    function showTable(name) {
+        current = name;
+        for (const key in SCHEMAS) {
+            document.getElementById("tab-" + key).classList.toggle("active", key === name);
+        }
+        setStatus("");
+        loadTable();
+    }
 
-        if ((method === "PUT" || method === "DELETE") && !id) {
-            result.textContent = "Enter a record ID.";
+    async function loadTable() {
+        const schema = SCHEMAS[current];
+        const head = document.getElementById("table-head");
+        const body = document.getElementById("table-body");
+        try {
+            const records = await api("/api/admin/" + current);
+
+            head.innerHTML = "";
+            const headRow = head.insertRow();
+            for (const [, label] of schema.columns) {
+                const th = document.createElement("th");
+                th.textContent = label;
+                headRow.appendChild(th);
+            }
+            headRow.appendChild(document.createElement("th")).textContent = "Actions";
+
+            body.innerHTML = "";
+            if (records.length === 0) {
+                const cell = body.insertRow().insertCell();
+                cell.colSpan = schema.columns.length + 1;
+                cell.textContent = "No records found.";
+                return;
+            }
+            for (const record of records) {
+                const row = body.insertRow();
+                for (const [key] of schema.columns) {
+                    row.insertCell().textContent = record[key] ?? "";
+                }
+                const actions = row.insertCell();
+                const edit = document.createElement("button");
+                edit.textContent = "Edit";
+                edit.onclick = () => openForm(record);
+                const del = document.createElement("button");
+                del.textContent = "Delete";
+                del.className = "danger";
+                del.onclick = () => deleteRecord(record);
+                actions.append(edit, del);
+            }
+        } catch (error) {
+            setStatus("Unable to load " + current + ": " + error.message, true);
+        }
+    }
+
+    // Selects for teacher/student/course are filled from the database so no IDs are typed by hand
+    function optionsFor(field) {
+        if (field.options) return field.options.map(o => ({ value: o, text: o }));
+        const people = role => lookups.users.filter(u => u.role === role).map(u => ({ value: u.id, text: u.name }));
+        if (field.source === "teachers") return people("teacher");
+        if (field.source === "students") return people("student");
+        return lookups.courses.map(c => ({ value: c.id, text: c.name }));
+    }
+
+    async function openForm(record) {
+        editing = record;
+        const schema = SCHEMAS[current];
+        try {
+            if (current !== "users") lookups.users = await api("/api/admin/users");
+            if (current === "enrollments") lookups.courses = await api("/api/admin/courses");
+        } catch (error) {
+            setStatus("Unable to load form data: " + error.message, true);
             return;
         }
 
-        let url = "/api/admin/" + table;
-        if (method === "PUT" || method === "DELETE") {
-            url += "/" + encodeURIComponent(id);
-        }
+        document.getElementById("form-title").textContent = (record ? "Edit " : "Add ") + schema.singular;
+        document.getElementById("form-error").textContent = "";
+        const container = document.getElementById("form-fields");
+        container.innerHTML = "";
 
-        const options = {method};
-
-        if (method === "POST" || method === "PUT") {
-            try {
-                options.headers = {"Content-Type": "application/json"};
-                options.body = JSON.stringify(JSON.parse(data));
-            } catch {
-                result.textContent = "Enter valid JSON.";
-                return;
+        for (const field of schema.fields) {
+            const label = document.createElement("label");
+            label.textContent = field.label;
+            let input;
+            if (field.type === "select") {
+                input = document.createElement("select");
+                for (const opt of optionsFor(field)) {
+                    const option = new Option(opt.text, opt.value);
+                    input.add(option);
+                }
+            } else {
+                input = document.createElement("input");
+                input.type = field.type || "text";
+                if (field.min !== undefined) input.min = field.min;
+                if (field.max !== undefined) input.max = field.max;
+                if (field.step !== undefined) input.step = field.step;
             }
+            input.name = field.key;
+            input.required = !field.optional && !(field.key === "password" && record);
+            if (field.key === "password" && record) input.placeholder = "Leave blank to keep current";
+            if (record && field.key !== "password") input.value = record[field.key] ?? "";
+            container.append(label, input);
+        }
+        dialog.showModal();
+    }
+
+    document.getElementById("record-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = event.target;
+        const data = {};
+        for (const field of SCHEMAS[current].fields) {
+            let value = form.elements[field.key].value.trim();
+            if (field.key === "password" && value === "") continue;           // keep the current password
+            if (field.type === "number") {
+                value = value === "" ? null : Number(value);
+            } else if (field.numeric) {
+                value = Number(value);
+            }
+            data[field.key] = value;
         }
 
+        const url = "/api/admin/" + current + (editing ? "/" + editing.id : "");
         try {
-            if (options?.method && options.method !== "GET") options.headers = {...options.headers, "X-CSRF-TOKEN": csrfToken()};
-            const response = await fetch(url, options);
-            result.textContent = response.status + "\n" +
-                await response.text();
+            await api(url, {
+                method: editing ? "PUT" : "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+            dialog.close();
+            setStatus(SCHEMAS[current].singular + (editing ? " updated." : " created."));
+            await loadTable();
         } catch (error) {
-            result.textContent = error.message;
+            document.getElementById("form-error").textContent = error.message;   // keep the form open
+        }
+    });
+
+    async function deleteRecord(record) {
+        const name = record.username || record.name || ("#" + record.id);
+        if (!confirm("Delete " + SCHEMAS[current].singular.toLowerCase() + " " + name + "? This can't be undone.")) return;
+        try {
+            await api("/api/admin/" + current + "/" + record.id, { method: "DELETE" });
+            setStatus("Deleted " + name + ".");
+            await loadTable();
+        } catch (error) {
+            setStatus(error.message, true);   // e.g. "Remove enrollments before deleting course"
         }
     }
+
+    showWelcome(document.getElementById("welcome"));
+    loadTable();
 </script>
 
 </body>

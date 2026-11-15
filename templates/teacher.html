@@ -1,10 +1,11 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teacher Dashboard</title>
     <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/dashboard.css">
 </head>
 <body>
 
@@ -13,76 +14,146 @@
 </header>
 
 <main class="dashboard-main">
-    <button type="button" onclick="logout()">Log Out</button>
-    <h2>My Classes</h2>
-    <button onclick="getData('/api/teacher/courses')">
-        View Classes
-    </button>
+    <div class="topbar">
+        <h2 id="welcome">Welcome!</h2>
+        <button type="button" onclick="logout()">Log Out</button>
+    </div>
 
-    <h2>Student Grades</h2>
-    <input id="course" placeholder="Course ID">
-    <button onclick="getStudents()">View Students</button>
+    <section id="classes-view">
+        <h2>Your Courses</h2>
+        <table>
+            <thead><tr><th>Course</th><th>Teacher</th><th>Time</th><th>Students Enrolled</th><th>Action</th></tr></thead>
+            <tbody id="classes"></tbody>
+        </table>
+    </section>
 
-    <h2>Update Grade</h2>
-    <input id="student" placeholder="Student ID">
-    <input id="grade" type="number" placeholder="Grade">
-    <button onclick="updateGrade()">Save Grade</button>
+    <section id="roster-view" hidden>
+        <a href="#" onclick="showClasses(); return false;">&larr; Back to your courses</a>
+        <h2 id="roster-title"></h2>
+        <table>
+            <thead><tr><th>Student Name</th><th>Grade</th><th>Action</th></tr></thead>
+            <tbody id="roster"></tbody>
+        </table>
+    </section>
 
-    <h2>Results</h2>
-    <pre id="result"></pre>
+    <p id="status"></p>
 </main>
 
+<script src="/static/common.js"></script>
 <script>
-    function csrfToken() {
-        return document.cookie.split("; ").find(x => x.startsWith("csrf_access_token="))?.split("=")[1] || "";
-    }
-    async function logout() {
-        await fetch("/api/logout", {method: "POST", headers: {"X-CSRF-TOKEN": csrfToken()}});
-        window.location.href = "/";
+    const statusText = document.getElementById("status");
+
+    function setStatus(message, isError = false) {
+        statusText.textContent = message;
+        statusText.className = isError ? "error" : "";
     }
 
-    const result = document.getElementById("result");
+    function showClasses() {
+        document.getElementById("classes-view").hidden = false;
+        document.getElementById("roster-view").hidden = true;
+        setStatus("");
+        loadClasses();   // refresh counts
+    }
 
-    async function request(url, options) {
+    async function loadClasses() {
+        const tbody = document.getElementById("classes");
         try {
-            if (options?.method && options.method !== "GET") options.headers = {...options.headers, "X-CSRF-TOKEN": csrfToken()};
-            const response = await fetch(url, options);
-            const text = await response.text();
-            result.textContent = response.status + "\n" + text;
-        } catch (error) {
-            result.textContent = error.message;
-        }
-    }
-
-    function getData(url) {
-        request(url);
-    }
-
-    function getStudents() {
-        const id = document.getElementById("course").value;
-        request("/api/teacher/courses/" + encodeURIComponent(id) + "/students");
-    }
-
-    function updateGrade() {
-        const course = document.getElementById("course").value;
-        const student = document.getElementById("student").value;
-        const grade = document.getElementById("grade").value;
-
-        if (!course || !student || grade === "") {
-            result.textContent = "Fill in all fields.";
-            return;
-        }
-
-        request(
-            "/api/teacher/courses/" + encodeURIComponent(course) +
-            "/students/" + encodeURIComponent(student) + "/grade",
-            {
-                method: "PATCH",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({grade: Number(grade)})
+            const courses = await api("/api/teacher/courses");
+            tbody.innerHTML = "";
+            if (courses.length === 0) {
+                const cell = tbody.insertRow().insertCell();
+                cell.colSpan = 5;
+                cell.textContent = "You are not teaching any courses.";
+                return;
             }
-        );
+            for (const course of courses) {
+                const row = tbody.insertRow();
+                row.insertCell().textContent = course.name;
+                row.insertCell().textContent = course.teacher;
+                row.insertCell().textContent = course.time;
+                row.insertCell().textContent = course.enrolled_count + "/" + course.capacity;
+                const button = document.createElement("button");
+                button.textContent = "View Students";
+                button.onclick = () => openCourse(course);
+                row.insertCell().appendChild(button);
+            }
+        } catch (error) {
+            setStatus("Unable to load courses: " + error.message, true);
+        }
     }
+
+    async function openCourse(course) {
+        try {
+            const students = await api("/api/teacher/courses/" + course.id + "/students");
+            students.sort((a, b) => a.name.localeCompare(b.name));
+
+            document.getElementById("roster-title").textContent = course.name + " (" + course.time + ")";
+            const tbody = document.getElementById("roster");
+            tbody.innerHTML = "";
+            if (students.length === 0) {
+                const cell = tbody.insertRow().insertCell();
+                cell.colSpan = 3;
+                cell.textContent = "No students are enrolled yet.";
+            }
+            for (const student of students) tbody.appendChild(rosterRow(course, student));
+
+            document.getElementById("classes-view").hidden = true;
+            document.getElementById("roster-view").hidden = false;
+            setStatus("");
+        } catch (error) {
+            setStatus("Unable to load students: " + error.message, true);
+        }
+    }
+
+    // One roster row: the grade is an editable box, and Save only enables once it changes
+    function rosterRow(course, student) {
+        const row = document.createElement("tr");
+        row.insertCell().textContent = student.name;
+
+        let saved = student.grade == null ? "" : String(student.grade);
+        const input = document.createElement("input");
+        input.type = "number";
+        input.min = 0;
+        input.max = 100;
+        input.step = "any";
+        input.className = "grade-input";
+        input.value = saved;
+        row.insertCell().appendChild(input);
+
+        const button = document.createElement("button");
+        button.textContent = "Save";
+        button.disabled = true;
+        row.insertCell().appendChild(button);
+
+        input.addEventListener("input", () => { button.disabled = input.value === saved; });
+        input.addEventListener("keydown", e => { if (e.key === "Enter" && !button.disabled) button.click(); });
+
+        button.addEventListener("click", async () => {
+            const grade = Number(input.value);
+            if (input.value === "" || !Number.isFinite(grade) || grade < 0 || grade > 100) {
+                setStatus("Grade must be a number from 0 to 100.", true);
+                return;
+            }
+            button.disabled = true;
+            try {
+                await api("/api/teacher/courses/" + course.id + "/students/" + student.id + "/grade", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ grade })
+                });
+                saved = String(grade);
+                input.value = saved;
+                setStatus("Saved " + student.name + "'s grade: " + saved + ".");
+            } catch (error) {
+                setStatus(error.message, true);
+                button.disabled = false;
+            }
+        });
+        return row;
+    }
+
+    showWelcome(document.getElementById("welcome"));
+    loadClasses();
 </script>
 
 </body>

@@ -1,0 +1,61 @@
+/* =========================================
+   Student / Teacher feature additions
+========================================= */
+
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.dashboard-main .topbar h2 { margin: 0; }
+
+.tabs { margin: 20px 0 5px; }
+
+.tab {
+    background-color: white;
+    color: #2563eb;
+    border: 1px solid #2563eb;
+}
+
+.tab:hover { background-color: #dbeafe; }
+
+.tab.active,
+.tab.active:hover {
+    background-color: #2563eb;
+    color: white;
+}
+
+.dashboard-main input.grade-input {
+    display: inline-block;
+    width: 90px;
+    margin: 0;
+    padding: 8px;
+}
+
+.dashboard-main td button { margin: 0; padding: 8px 14px; }
+
+#status.error { color: #b91c1c; }
+
+/* =========================================
+   Admin page additions
+========================================= */
+
+.dashboard-main dialog {
+    width: 100%;
+    max-width: 420px;
+    padding: 25px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+}
+
+.dashboard-main dialog::backdrop { background-color: rgba(0, 0, 0, 0.4); }
+.dashboard-main dialog h2 { margin-top: 0; }
+.dashboard-main dialog label { display: block; font-size: 14px; font-weight: bold; }
+.dialog-buttons { display: flex; justify-content: flex-end; gap: 8px; }
+.dashboard-main button.secondary { background-color: #64748b; }
+.dashboard-main button.danger { background-color: #dc2626; }
+.dashboard-main td button { margin-right: 6px; }
+#form-error { color: #b91c1c; min-height: 18px; }
