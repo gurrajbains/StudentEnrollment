@@ -1,12 +1,8 @@
-
-/* =========================================
-   General Styling
-========================================= */
-
 * {
     box-sizing: border-box;
 }
 
+/* Set the basic page typography and background colors. */
 body {
     margin: 0;
     padding: 0;
@@ -37,9 +33,7 @@ header p {
     color: #dbeafe;
 }
 
-/* =========================================
-   Login Page
-========================================= */
+/*Login Page and Dashboard Layout*/
 
 main {
     display: flex;
@@ -49,6 +43,7 @@ main {
     padding: 30px 20px;
 }
 
+/* Center the login form  */
 .login-container {
     background-color: white;
     width: 100%;
@@ -73,7 +68,6 @@ main {
 }
 
 /* Login Form */
-
 .form-group {
     margin-bottom: 20px;
 }
@@ -99,9 +93,7 @@ main {
     box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
 }
 
-/* =========================================
-   Buttons
-========================================= */
+/*   Buttons for login and dashboard actions */
 
 button {
     padding: 12px 18px;
@@ -231,6 +223,7 @@ main.dashboard-main {
    Student / Teacher Tables
 ========================================= */
 
+/* Format courses, grades, and administrative records consistently. */
 .dashboard-main table {
     width: 100%;
     border-collapse: collapse;
@@ -291,7 +284,6 @@ main.dashboard-main {
 ========================================= */
 
 @media (max-width: 700px) {
-
     header h1 {
         font-size: 22px;
     }

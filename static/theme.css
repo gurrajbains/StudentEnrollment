@@ -1,0 +1,130 @@
+
+/* Student Enrollment System with a dark mode  */
+
+
+/* Remove default browser styles. set a consistent box-sizing model. */
+
+:root {
+    color-scheme: light;
+    --bg: #f3f4f6;
+    --surface: #ffffff;
+    --surface-alt: #f9fafb;
+    --text: #25262b;
+    --muted: #62646b;
+    --border: #d8dadd;
+    --header: #292b30;
+    --accent: #b91c1c;
+    --accent-hover: #991b1b;
+    --accent-soft: #fee2e2;
+    --table-head: #eceef0;
+    --input: #ffffff;
+    --shadow: 0 4px 18px rgba(20,20,25,.055);
+}
+
+/*  Colors for the dark theme */
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #16171b;
+    --surface: #24262c;
+    --surface-alt: #2b2e35;
+    --text: #f4f5f7;
+    --muted: #c1c2c8;
+    --border: #484b54;
+    --header: #1d1e23;
+    --accent: #cf4146;
+    --accent-hover: #e05156;
+    --accent-soft: #4b282d;
+    --table-head: #34363e;
+    --input: #2b2e35;
+    --shadow: 0 4px 20px rgba(0,0,0,.18);
+}
+
+/* General Layouy and stlying for the login page and dashboard such as the header, topbar, and main content area. */
+html { background: var(--bg); }
+body { background: var(--bg); color: var(--text); }
+header { background: var(--header); border-bottom: 4px solid var(--accent); color: #fff; padding: 22px 20px; }
+header h1 { color: #fff; letter-spacing: .1px; }
+header p { color: #d7d9de; }
+main.dashboard-main { width: min(100%, 1180px); padding: 24px; }
+.login-container, .dashboard-card { background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); color: var(--text); }
+.login-container { border-top: 4px solid var(--accent); }
+.login-container p, .dashboard-main p { color: var(--muted);}
+.dashboard-main h2, .dashboard-main h3 { color: var(--text);}
+.dashboard-main a, .dashboard-links a { color: var(--accent);}
+.dashboard-links a { border-color: var(--accent); background: var(--surface);}
+.dashboard-links a:hover { background: var(--accent); color: #fff; }
+
+/* Add styling for buttons and navigation tabs that are active or hovered which improve the user experience
+. */
+button, .tab.active, .tab.active:hover { background: var(--accent); color: #fff; }
+button:hover, .tab.active:hover { background: var(--accent-hover); }
+button:disabled { background: #83858c; color: #f9fafb; }
+.tab { background: var(--surface); color: var(--accent); border: 1px solid var(--accent); }
+.tab:hover { background: var(--accent-soft); color: var(--text); }
+
+.dashboard-main input, .dashboard-main select, .dashboard-main textarea,
+.form-group input, input, select, textarea {
+    background: var(--input);
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+
+.dashboard-main input:focus, .dashboard-main select:focus, .dashboard-main textarea:focus,
+.form-group input:focus {
+    border-color: var(--accent);
+    outline: 2px solid transparent;
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+input::placeholder, textarea::placeholder { color: var(--muted); }
+
+/* Tables are used for displaying structured data in the dashboard. */
+.dashboard-main table { border: 1px solid var(--border); background: var(--surface); box-shadow: var(--shadow); }
+.dashboard-main th, .dashboard-main td { border: 1px solid var(--border); color: var(--text); }
+.dashboard-main th { background: var(--table-head); }
+.dashboard-main tr:hover { background: var(--surface-alt); }
+.dashboard-main pre { background: var(--surface); border-color: var(--border); color: var(--text); }
+.dashboard-main dialog { background: var(--surface); color: var(--text); border-color: var(--border); box-shadow: var(--shadow); }
+.dashboard-main dialog::backdrop { background: rgba(0,0,0,.65); }
+.dashboard-main button.secondary { background: #5c5e68; color: #fff; }
+.dashboard-main button.secondary:hover { background: #737680; }
+.dashboard-main button.danger { background: #a21920; color: #fff; }
+#status.error, #form-error, #login-error { color: #e0484d; }
+
+:root:not([data-theme="dark"]) #status.error,
+:root:not([data-theme="dark"]) #form-error,
+:root:not([data-theme="dark"]) #login-error {
+    color: #a21920;
+}
+
+[hidden] { display: none !important; }
+.topbar { gap: 18px; margin-bottom: 22px; }
+.topbar-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.topbar-actions button { margin: 0; }
+
+/* Style the theme toggle separately from regular action buttons. */
+.dashboard-main button.theme-toggle {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+}
+
+.dashboard-main button.theme-toggle:hover {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+}
+
+.dashboard-main button:focus-visible, .login-container button:focus-visible,
+a:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+}
+
+#login-error { font-size: 13px; line-height: 1.5; margin: 14px 0 0; }
+/* Flexbox layout for the topbar and responsive adjustments for smaller screens. */
+@media (max-width: 700px) {
+    main.dashboard-main { padding: 14px; }
+    .topbar { align-items: flex-start; }
+    .dashboard-main th, .dashboard-main td { min-width: 90px; }
+}

@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,9 +7,12 @@
     <title>Teacher Dashboard</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="/static/dashboard.css">
+    <link rel="stylesheet" href="/static/theme.css">
+    <script defer src="/static/theme.js"></script>
 </head>
 <body>
 
+<!-- Teacher dashboard: view assigned courses and save grades. -->
 <header>
     <h1>Teacher Dashboard</h1>
 </header>
@@ -16,9 +20,13 @@
 <main class="dashboard-main">
     <div class="topbar">
         <h2 id="welcome">Welcome!</h2>
-        <button type="button" onclick="logout()">Log Out</button>
+        <div class="topbar-actions">
+            <button type="button" class="theme-toggle" aria-pressed="false">Dark mode</button>
+            <button type="button" onclick="logout()">Log Out</button>
+        </div>
     </div>
 
+    <!-- List courses assigned to this teacher. -->
     <section id="classes-view">
         <h2>Your Courses</h2>
         <table>
@@ -27,6 +35,7 @@
         </table>
     </section>
 
+    <!-- Open the selected class roster for grade editing. -->
     <section id="roster-view" hidden>
         <a href="#" onclick="showClasses(); return false;">&larr; Back to your courses</a>
         <h2 id="roster-title"></h2>
@@ -55,6 +64,7 @@
         loadClasses();   // refresh counts
     }
 
+    // Fetch only this teacher's assigned classes by using the protected Flask endpoint. Show a message if none are assigned
     async function loadClasses() {
         const tbody = document.getElementById("classes");
         try {
@@ -82,6 +92,7 @@
         }
     }
 
+    // Retrieve the selected class roster and display its students
     async function openCourse(course) {
         try {
             const students = await api("/api/teacher/courses/" + course.id + "/students");
@@ -106,6 +117,7 @@
     }
 
     // One roster row: the grade is an editable box, and Save only enables once it changes
+    // Create a grade input and Save button for one student.
     function rosterRow(course, student) {
         const row = document.createElement("tr");
         row.insertCell().textContent = student.name;
@@ -128,6 +140,7 @@
         input.addEventListener("input", () => { button.disabled = input.value === saved; });
         input.addEventListener("keydown", e => { if (e.key === "Enter" && !button.disabled) button.click(); });
 
+        // Validate and PATCH a changed grade to the protected Flask endpoint.
         button.addEventListener("click", async () => {
             const grade = Number(input.value);
             if (input.value === "" || !Number.isFinite(grade) || grade < 0 || grade > 100) {

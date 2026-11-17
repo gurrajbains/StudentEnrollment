@@ -1,8 +1,9 @@
+
 from extensions import database
 
 
+# Store student, teacher, and admin accounts with different roles.
 class User(database.Model):
-    # Stores students, teachers, and admins in the same table with a role field to differentiate them
     id = database.Column(
         database.Integer, primary_key=True
     )
@@ -14,17 +15,16 @@ class User(database.Model):
     )
     password = database.Column(
         database.String(255), nullable=False
-    )  # BCrypt hash (legacy column name)
+    )  # BCrypt password hash
     role = database.Column(
         database.String(20), nullable=False
-    )  # 'student', 'admin'. or 'teacher'
+    )  # student, teacher, or admin
 
     def __repr__(self):
-        # Return a string representation of the user object
         return f"<User {self.username}>"
-    
+
+    # Convert a user record to JSON-safe data without the password.
     def toDict(self):
-        # Return a dictionary representation of the user object
         return {
             "id": self.id,
             "username": self.username,
@@ -33,8 +33,8 @@ class User(database.Model):
         }
 
 
+# Store each course, its teacher, meeting time, and seat capacity.
 class Course(database.Model):
-    # Stores the courses offered by the school, uses many-to-one relationship with user
     id = database.Column(
         database.Integer, primary_key=True
     )
@@ -42,16 +42,27 @@ class Course(database.Model):
         database.String(80), nullable=False, unique=True
     )
     teacherID = database.Column(
-        database.Integer, database.ForeignKey('user.id'), nullable=False
+        database.Integer,
+        database.ForeignKey('user.id'),
+        nullable=False
     )
-    time = database.Column(database.String(80), nullable=False)
-    capacity = database.Column(database.Integer, nullable=False)
+    time = database.Column(
+        database.String(80), nullable=False
+    )
+    capacity = database.Column(
+        database.Integer, nullable=False
+    )
 
-    teacher = database.relationship("User", backref=database.backref("courses", lazy=True))
+    # Connect each course to its assigned teacher.
+    teacher = database.relationship(
+        "User",
+        backref=database.backref("courses", lazy=True)
+    )
 
     def __repr__(self):
         return f"<Course {self.name}>"
-    
+
+    # Include the current enrollment count in course API responses.
     def toDict(self):
         return {
             "id": self.id,
@@ -61,34 +72,42 @@ class Course(database.Model):
             "time": self.time,
             "capacity": self.capacity,
             "enrolled_count": len(self.enrollments) # type: ignore
-            # relationship is lazy-loaded, so we can use len() to get the count of enrollments
         }
 
+
+# Connect students to courses and store their grades.
 class Enrollment(database.Model):
-    # Junction table that connects students and courses, uses many-to-many relationship with grade field to store the grade of the student in the course
     id = database.Column(
         database.Integer, primary_key=True
     )
     studentID = database.Column(
-        database.Integer, database.ForeignKey('user.id'), nullable=False
+        database.Integer,
+        database.ForeignKey('user.id'),
+        nullable=False
     )
     courseID = database.Column(
-        database.Integer, database.ForeignKey('course.id'), nullable=False
+        database.Integer,
+        database.ForeignKey('course.id'),
+        nullable=False
     )
     grade = database.Column(
         database.String(10), nullable=True
-    )  # Grade can be null if the student has not completed the course yet
+    )  # Grade can remain empty until assigned.
 
-    student= database.relationship(
-        "User", backref=database.backref("enrollments", lazy=True)
+    # Link enrollment records to their student and course.
+    student = database.relationship(
+        "User",
+        backref=database.backref("enrollments", lazy=True)
     )
     course = database.relationship(
-        "Course", backref=database.backref("enrollments", lazy=True)
+        "Course",
+        backref=database.backref("enrollments", lazy=True)
     )
 
     def __repr__(self):
         return f"<Enrollment StudentID: {self.studentID}, CourseID: {self.courseID}, Grade: {self.grade}>"
 
+    # Return enrollment data and related names for the admin interface.
     def toDict(self):
         return {
             "id": self.id,

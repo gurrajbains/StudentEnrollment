@@ -1,26 +1,35 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Dashboard</title>
-    <link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/dashboard.css">
+<link rel="stylesheet" href="/static/theme.css">
+<script defer src="/static/theme.js"></script>
 </head>
-
 <body>
 
+<!-- Student dashboard with basic course management such as enrolling and dropping courses. -->
 <header>
     <h1>Student Dashboard</h1>
 </header>
 
 <main class="dashboard-main">
 
-    <button type="button" onclick="logout()">Log Out</button>
+    <div class="topbar">
+        <h2 id="welcome">Welcome!</h2>
+        <div class="topbar-actions">
+            <button type="button" class="theme-toggle" aria-pressed="false">Dark mode</button>
+            <button type="button" onclick="logout()">Log Out</button>
+        </div>
+    </div>
 
+    <!-- Show the courses the signed-in student is taking. -->
     <h2>My Courses</h2>
     <button onclick="loadCourses()">Refresh Courses</button>
-
+   <!-- Table of courses the student is enrolled in, with a drop button for each course. -->
     <table>
         <thead>
             <tr>
@@ -34,6 +43,7 @@
         <tbody id="my-courses"></tbody>
     </table>
 
+    <!--  Shows available courses and whether seats are still available. -->
     <h2>Available Courses</h2>
 
     <table>
@@ -53,35 +63,17 @@
 
 </main>
 
+<script src="/static/common.js"></script>
 <script>
-    function csrfToken() {
-        return document.cookie.split("; ").find(x => x.startsWith("csrf_access_token="))?.split("=")[1] || "";
-    }
-    async function logout() {
-        await fetch("/api/logout", {method: "POST", headers: {"X-CSRF-TOKEN": csrfToken()}});
-        window.location.href = "/";
-    }
-
     const myCourses = document.getElementById("my-courses");
     const availableCourses = document.getElementById("available-courses");
     const statusText = document.getElementById("status");
 
-    async function api(url, options = {}) {
-        if (options.method && options.method !== "GET") options.headers = {...options.headers, "X-CSRF-TOKEN": csrfToken()};
-        const response = await fetch(url, options);
-
-        if (!response.ok) {
-            throw new Error("HTTP " + response.status);
-        }
-
-        const text = await response.text();
-        return text ? JSON.parse(text) : null;
-    }
-
-    function showCourses(courses, table, action) {
+    //  Build the table rows and enable either Enroll or Drop actions
+    function showCourses(courses, table, action){
         table.innerHTML = "";
 
-        if (courses.length === 0) {
+        if(courses.length === 0){
             const row = table.insertRow();
             const cell = row.insertCell();
             cell.colSpan = 5;
@@ -89,7 +81,7 @@
             return;
         }
 
-        for (const course of courses) {
+        for (const course of courses){
             const row = table.insertRow();
 
             row.insertCell().textContent = course.name;
@@ -123,6 +115,7 @@
         }
     }
 
+    //  Load registered courses and filter them out of the available catalog
     async function loadCourses() {
         try {
             const enrolled = await api("/api/student/courses");
@@ -138,6 +131,7 @@
         }
     }
 
+    //  POST the selected course to Flask; it performs duplicate/capacity checks
     async function enrollCourse(courseId) {
         try {
             await api("/api/student/courses", {
@@ -158,6 +152,7 @@
         }
     }
 
+    // DELETE the students enrollment and refresh the course tables
     async function dropCourse(courseId) {
         try {
             await api(
@@ -176,6 +171,7 @@
         }
     }
 
+    showWelcome(document.getElementById("welcome"));
     loadCourses();
 </script>
 

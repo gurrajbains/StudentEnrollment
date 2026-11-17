@@ -1,0 +1,42 @@
+USER
+id - Unique identifier for each user
+username - Username used to log in
+password_hash - Securely stored password
+role - Determines whether the user is a student, teacher, or admin
+
+ROLE
+student - Can view, enroll in, and drop courses
+teacher - Can view assigned classes and edit student grades
+admin - Can manage users, courses, and enrollments
+
+COURSE
+id - Unique identifier for each course
+name - Name of the course
+teacher - Teacher assigned to the course
+time - Scheduled meeting time
+enrolled_count - Number of students currently enroled
+capacity - Maximum number of students allowed
+
+STUDENT
+id - Unique identifier for each student
+name - Student's full name
+
+ENROLLMENT
+id - Unique identifier for each enrollment
+student_id - Identifies the enrolled student
+course_id - Identifies the course being taken
+grade - Student's grade in that course
+
+LOGIN
+username - Username entered on the login page
+password - Password entered on the login page
+
+ENROLL REQUEST
+
+course_id - Identifies which course the student wants to joi
+
+GRADE UPDATE
+grade - New grade submitted by the teache
+
+
+These are the field names used in the frontend

@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,9 +7,12 @@
     <title>Admin Dashboard</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="/static/dashboard.css">
+    <link rel="stylesheet" href="/static/theme.css">
+    <script defer src="/static/theme.js"></script>
 </head>
 <body>
 
+<!-- Admin dashboard: manage users, courses, and enrollments. -->
 <header>
     <h1>Admin Dashboard</h1>
 </header>
@@ -16,16 +20,21 @@
 <main class="dashboard-main">
     <div class="topbar">
         <h2 id="welcome">Welcome!</h2>
-        <button type="button" onclick="logout()">Log Out</button>
+        <div class="topbar-actions">
+            <button type="button" class="theme-toggle" aria-pressed="false">Dark mode</button>
+            <button type="button" onclick="logout()">Log Out</button>
+        </div>
     </div>
 
-    <div class="tabs">
-        <button type="button" class="tab active" id="tab-users" onclick="showTable('users')">Users</button>
-        <button type="button" class="tab" id="tab-courses" onclick="showTable('courses')">Courses</button>
-        <button type="button" class="tab" id="tab-enrollments" onclick="showTable('enrollments')">Enrollments</button>
-    </div>
-
+    <!-- Switch between the three database record types. -->
+    
+<div class="tabs">
+    <button type="button" class="tab active" id="tab-users" onclick="showTable('users')">Users</button>
+    <button type="button" class="tab" id="tab-courses" onclick="showTable('courses')">Courses</button>
+    <button type="button" class="tab" id="tab-enrollments" onclick="showTable('enrollments')">Enrollments</button>
     <button type="button" onclick="openForm(null)">+ Add New</button>
+</div>
+
 
     <table>
         <thead id="table-head"></thead>
@@ -34,6 +43,7 @@
 
     <p id="status"></p>
 
+    <!-- Add/Edit dialog populated with the fields for the selected record type. -->
     <dialog id="form-dialog">
         <form id="record-form">
             <h2 id="form-title"></h2>
@@ -49,7 +59,7 @@
 
 <script src="/static/common.js"></script>
 <script>
-    // One description per table drives the whole page: which columns to show and which form fields to offer.
+    // Define each table's displayed columns and editable form fields.
     const SCHEMAS = {
         users: {
             singular: "User",
@@ -104,6 +114,7 @@
         loadTable();
     }
 
+    // GET the selected resource from the admin API and populate its table.
     async function loadTable() {
         const schema = SCHEMAS[current];
         const head = document.getElementById("table-head");
@@ -147,7 +158,7 @@
         }
     }
 
-    // Selects for teacher/student/course are filled from the database so no IDs are typed by hand
+    // Fill teacher, student, and course dropdowns from the database.
     function optionsFor(field) {
         if (field.options) return field.options.map(o => ({ value: o, text: o }));
         const people = role => lookups.users.filter(u => u.role === role).map(u => ({ value: u.id, text: u.name }));
@@ -156,6 +167,7 @@
         return lookups.courses.map(c => ({ value: c.id, text: c.name }));
     }
 
+    // Build a Create or Edit form using the selected resource schema.
     async function openForm(record) {
         editing = record;
         const schema = SCHEMAS[current];
@@ -198,13 +210,14 @@
         dialog.showModal();
     }
 
+    // POST creates a record; PUT updates an existing one.
     document.getElementById("record-form").addEventListener("submit", async (event) => {
         event.preventDefault();
         const form = event.target;
         const data = {};
         for (const field of SCHEMAS[current].fields) {
             let value = form.elements[field.key].value.trim();
-            if (field.key === "password" && value === "") continue;           // keep the current password
+            if (field.key === "password" && value === "") continue; // Keep the current password.
             if (field.type === "number") {
                 value = value === "" ? null : Number(value);
             } else if (field.numeric) {
@@ -224,19 +237,25 @@
             setStatus(SCHEMAS[current].singular + (editing ? " updated." : " created."));
             await loadTable();
         } catch (error) {
-            document.getElementById("form-error").textContent = error.message;   // keep the form open
+            document.getElementById("form-error").textContent = error.message; // Keep the form open.
         }
     });
 
+    // Confirm deletion before sending a DELETE request to Flask.
     async function deleteRecord(record) {
         const name = record.username || record.name || ("#" + record.id);
-        if (!confirm("Delete " + SCHEMAS[current].singular.toLowerCase() + " " + name + "? This can't be undone.")) return;
+        // Warn the administrator that deleting a student also removes grades.
+        let message = "Delete " + SCHEMAS[current].singular.toLowerCase() + " " + name + "? This can't be undone.";
+        if (current === "users" && record.role === "student") {
+            message = "Delete student " + name + "? All their enrollments and saved grades will also be deleted. This cannot be undone.";
+        }
+        if (!confirm(message)) return;
         try {
             await api("/api/admin/" + current + "/" + record.id, { method: "DELETE" });
             setStatus("Deleted " + name + ".");
             await loadTable();
         } catch (error) {
-            setStatus(error.message, true);   // e.g. "Remove enrollments before deleting course"
+            setStatus(error.message, true);
         }
     }
 
